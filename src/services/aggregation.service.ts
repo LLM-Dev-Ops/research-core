@@ -6,17 +6,13 @@
 
 import type {
   NormalizedResultLegacy,
-  AggregatedMetricsLegacy,
   AggregationResponse,
   MetricsSummaryLegacy
 } from '../types/index.js';
 import { ResearchLabAdapter } from '../adapters/research-lab.adapter.js';
 
 export class AggregationService {
-  constructor(private readonly _researchLabAdapter: ResearchLabAdapter) {
-    // Adapter stored for future use when connecting to real research lab
-    void this._researchLabAdapter;
-  }
+  constructor(private readonly _researchLabAdapter: ResearchLabAdapter) {}
 
   /**
    * Aggregate normalized results
@@ -27,8 +23,8 @@ export class AggregationService {
       throw new Error('Cannot aggregate empty results');
     }
 
-    // Calculate aggregated metrics locally (delegation placeholder)
-    const aggregatedMetrics = this.calculateAggregatedMetrics(results);
+    // Delegate aggregation to research-lab (Layer-3 boundary compliance)
+    const aggregatedMetrics = await this._researchLabAdapter.aggregate(results);
 
     return {
       aggregatedMetrics,
@@ -43,31 +39,30 @@ export class AggregationService {
   async combineExperiments(
     experimentResults: Map<string, NormalizedResultLegacy[]>
   ): Promise<AggregationResponse> {
-    // Flatten all results
+    // Flatten all results for delegation
     const allResults: NormalizedResultLegacy[] = [];
     experimentResults.forEach(results => {
       allResults.push(...results);
     });
 
-    // Aggregate combined results
+    // Delegate to research-lab
     return this.aggregateResults(allResults);
   }
 
   /**
    * Aggregate by model
-   * Groups results by model ID and computes statistics
+   * Groups results by model ID and delegates computation to research-lab
    */
   async aggregateByModel(
     results: NormalizedResultLegacy[]
   ): Promise<Record<string, MetricsSummaryLegacy>> {
-    // Group results by model
-    const grouped = this.groupByModel(results);
-
+    // Group results by model, then delegate aggregation
+    const grouped = this.groupByKey(results, r => r.modelId);
     const aggregated: Record<string, MetricsSummaryLegacy> = {};
 
-    // Aggregate each model's results
     for (const [modelId, modelResults] of Object.entries(grouped)) {
-      aggregated[modelId] = this.calculateMetricsSummary(modelResults);
+      const metrics = await this._researchLabAdapter.aggregate(modelResults);
+      aggregated[modelId] = metrics.overall;
     }
 
     return aggregated;
@@ -75,19 +70,18 @@ export class AggregationService {
 
   /**
    * Aggregate by scenario
-   * Groups results by scenario ID and computes statistics
+   * Groups results by scenario ID and delegates computation to research-lab
    */
   async aggregateByScenario(
     results: NormalizedResultLegacy[]
   ): Promise<Record<string, MetricsSummaryLegacy>> {
-    // Group results by scenario
-    const grouped = this.groupByScenario(results);
-
+    // Group results by scenario, then delegate aggregation
+    const grouped = this.groupByKey(results, r => r.scenarioId);
     const aggregated: Record<string, MetricsSummaryLegacy> = {};
 
-    // Aggregate each scenario's results
     for (const [scenarioId, scenarioResults] of Object.entries(grouped)) {
-      aggregated[scenarioId] = this.calculateMetricsSummary(scenarioResults);
+      const metrics = await this._researchLabAdapter.aggregate(scenarioResults);
+      aggregated[scenarioId] = metrics.overall;
     }
 
     return aggregated;
@@ -95,30 +89,47 @@ export class AggregationService {
 
   /**
    * Calculate overall statistics
-   * Computes aggregate metrics across all results
+   * Delegates computation to research-lab
    */
   async calculateOverall(results: NormalizedResultLegacy[]): Promise<MetricsSummaryLegacy> {
-    return this.calculateMetricsSummary(results);
+    const metrics = await this._researchLabAdapter.aggregate(results);
+    return metrics.overall;
   }
 
   /**
-   * Calculate aggregated metrics from results
+   * Get summary statistics for a specific metric
+   * Delegates to research-lab for computation
    */
-  private calculateAggregatedMetrics(results: NormalizedResultLegacy[]): AggregatedMetricsLegacy {
+  async getMetricSummary(
+    results: NormalizedResultLegacy[],
+    metricName: string
+  ): Promise<{ mean: number; median: number; stdDev: number; min: number; max: number }> {
+    // Validate metric exists in results
+    const hasMetric = results.some(r => r.metrics[metricName] !== undefined);
+    if (!hasMetric) {
+      throw new Error(`No values found for metric: ${metricName}`);
+    }
+
+    // Delegate to research-lab and extract specific metric
+    const aggregated = await this._researchLabAdapter.aggregate(results);
+    const overall = aggregated.overall;
+
     return {
-      byModel: this.groupAndSummarize(results, r => r.modelId),
-      byScenario: this.groupAndSummarize(results, r => r.scenarioId),
-      overall: this.calculateMetricsSummary(results)
+      mean: overall.mean[metricName] ?? 0,
+      median: overall.median[metricName] ?? 0,
+      stdDev: overall.stdDev[metricName] ?? 0,
+      min: overall.min[metricName] ?? 0,
+      max: overall.max[metricName] ?? 0
     };
   }
 
   /**
-   * Group results and calculate summaries
+   * Group results by a key function (coordination helper, no computation)
    */
-  private groupAndSummarize(
+  private groupByKey(
     results: NormalizedResultLegacy[],
     keyFn: (r: NormalizedResultLegacy) => string
-  ): Record<string, MetricsSummaryLegacy> {
+  ): Record<string, NormalizedResultLegacy[]> {
     const grouped: Record<string, NormalizedResultLegacy[]> = {};
 
     results.forEach(result => {
@@ -129,140 +140,6 @@ export class AggregationService {
       grouped[key].push(result);
     });
 
-    const summaries: Record<string, MetricsSummaryLegacy> = {};
-    for (const [key, groupResults] of Object.entries(grouped)) {
-      summaries[key] = this.calculateMetricsSummary(groupResults);
-    }
-
-    return summaries;
-  }
-
-  /**
-   * Calculate metrics summary for a group of results
-   */
-  private calculateMetricsSummary(results: NormalizedResultLegacy[]): MetricsSummaryLegacy {
-    if (results.length === 0) {
-      return {
-        mean: {},
-        median: {},
-        stdDev: {},
-        min: {},
-        max: {},
-        count: 0
-      };
-    }
-
-    // Collect all metric names
-    const metricNames = new Set<string>();
-    results.forEach(r => {
-      Object.keys(r.metrics).forEach(name => metricNames.add(name));
-    });
-
-    const mean: Record<string, number> = {};
-    const median: Record<string, number> = {};
-    const stdDev: Record<string, number> = {};
-    const min: Record<string, number> = {};
-    const max: Record<string, number> = {};
-
-    metricNames.forEach(metricName => {
-      const values = results
-        .map(r => r.metrics[metricName])
-        .filter((v): v is number => v !== undefined);
-
-      if (values.length > 0) {
-        const stats = this.calculateStats(values);
-        mean[metricName] = stats.mean;
-        median[metricName] = stats.median;
-        stdDev[metricName] = stats.stdDev;
-        min[metricName] = stats.min;
-        max[metricName] = stats.max;
-      }
-    });
-
-    return { mean, median, stdDev, min, max, count: results.length };
-  }
-
-  /**
-   * Calculate basic statistics for a set of values
-   */
-  private calculateStats(values: number[]): {
-    mean: number;
-    median: number;
-    stdDev: number;
-    min: number;
-    max: number;
-  } {
-    const sorted = [...values].sort((a, b) => a - b);
-    const n = values.length;
-
-    const sum = values.reduce((a, b) => a + b, 0);
-    const mean = sum / n;
-
-    const median = n % 2 === 0
-      ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2
-      : sorted[Math.floor(n / 2)];
-
-    const variance = values.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / n;
-    const stdDev = Math.sqrt(variance);
-
-    return {
-      mean,
-      median,
-      stdDev,
-      min: sorted[0],
-      max: sorted[n - 1]
-    };
-  }
-
-  /**
-   * Group results by model ID
-   */
-  private groupByModel(results: NormalizedResultLegacy[]): Record<string, NormalizedResultLegacy[]> {
-    const grouped: Record<string, NormalizedResultLegacy[]> = {};
-
-    results.forEach(result => {
-      if (!grouped[result.modelId]) {
-        grouped[result.modelId] = [];
-      }
-      grouped[result.modelId].push(result);
-    });
-
     return grouped;
-  }
-
-  /**
-   * Group results by scenario ID
-   */
-  private groupByScenario(results: NormalizedResultLegacy[]): Record<string, NormalizedResultLegacy[]> {
-    const grouped: Record<string, NormalizedResultLegacy[]> = {};
-
-    results.forEach(result => {
-      if (!grouped[result.scenarioId]) {
-        grouped[result.scenarioId] = [];
-      }
-      grouped[result.scenarioId].push(result);
-    });
-
-    return grouped;
-  }
-
-  /**
-   * Get summary statistics for a specific metric
-   * Extracts and analyzes a single metric across results
-   */
-  async getMetricSummary(
-    results: NormalizedResultLegacy[],
-    metricName: string
-  ): Promise<{ mean: number; median: number; stdDev: number; min: number; max: number }> {
-    // Extract metric values
-    const values = results
-      .map(r => r.metrics[metricName])
-      .filter((v): v is number => v !== undefined);
-
-    if (values.length === 0) {
-      throw new Error(`No values found for metric: ${metricName}`);
-    }
-
-    return this.calculateStats(values);
   }
 }

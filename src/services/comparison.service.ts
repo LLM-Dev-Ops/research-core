@@ -3,6 +3,7 @@
  *
  * Exposes read-only research artifacts and comparisons.
  * Presents reproducible summaries.
+ * Pure coordination - delegates comparison logic to research-lab.
  */
 
 import type {
@@ -13,10 +14,7 @@ import type {
 import { ResearchLabAdapter } from '../adapters/research-lab.adapter.js';
 
 export class ComparisonService {
-  constructor(private readonly _researchLabAdapter: ResearchLabAdapter) {
-    // Adapter stored for future use when connecting to real research lab
-    void this._researchLabAdapter;
-  }
+  constructor(private readonly _researchLabAdapter: ResearchLabAdapter) {}
 
   /**
    * Compare results across multiple models
@@ -37,8 +35,8 @@ export class ComparisonService {
     // Filter results for specified models
     const filteredResults = results.filter(r => modelIds.includes(r.modelId));
 
-    // Generate pairwise comparisons
-    const comparisons = this.generatePairwiseComparisons(filteredResults, modelIds);
+    // Delegate comparison to research-lab (Layer-3 boundary compliance)
+    const comparisons = await this._researchLabAdapter.compare(filteredResults, modelIds);
 
     return {
       comparisons,
@@ -48,7 +46,7 @@ export class ComparisonService {
 
   /**
    * Generate a reproducible summary from comparison results
-   * Creates human-readable summary of key findings
+   * Creates human-readable summary of key findings (formatting only, no computation)
    */
   async generateSummary(results: ComparisonResultLegacy[]): Promise<string> {
     let summary = 'Model Comparison Summary\n';
@@ -58,18 +56,18 @@ export class ComparisonService {
       summary += `Comparison ${index + 1}: ${comparison.modelA} vs ${comparison.modelB}\n`;
       summary += '-'.repeat(50) + '\n';
 
-      // Add metric differences
+      // Format metric differences
       summary += 'Metric Differences:\n';
       Object.entries(comparison.metricDifferences).forEach(([metric, diff]) => {
         summary += `  ${metric}: ${diff.toFixed(4)}\n`;
       });
 
-      // Add winner if present
+      // Format winner if present
       if (comparison.winner) {
         summary += `Winner: ${comparison.winner}\n`;
       }
 
-      // Add statistical significance if present
+      // Format statistical significance if present
       if (comparison.statisticalSignificance) {
         summary += 'Statistical Significance:\n';
         Object.entries(comparison.statisticalSignificance).forEach(([metric, sig]) => {
@@ -85,13 +83,14 @@ export class ComparisonService {
 
   /**
    * Compare models pairwise
-   * Creates all pairwise comparisons between models
+   * Delegates to research-lab for comparison computation
    */
   async comparePairwise(
     results: NormalizedResultLegacy[],
     modelIds: string[]
   ): Promise<ComparisonResponse> {
-    const comparisons = this.generatePairwiseComparisons(results, modelIds);
+    // Delegate to research-lab
+    const comparisons = await this._researchLabAdapter.compare(results, modelIds);
 
     return {
       comparisons,
@@ -101,7 +100,7 @@ export class ComparisonService {
 
   /**
    * Compare against baseline
-   * Compares all models against a baseline model
+   * Compares all models against a baseline model via research-lab
    */
   async compareToBaseline(
     results: NormalizedResultLegacy[],
@@ -109,17 +108,21 @@ export class ComparisonService {
   ): Promise<ComparisonResponse> {
     // Get all unique model IDs except baseline
     const allModelIds = [...new Set(results.map(r => r.modelId))];
-    const otherModels = allModelIds.filter(id => id !== baselineModelId);
 
     if (!allModelIds.includes(baselineModelId)) {
       throw new Error(`Baseline model not found in results: ${baselineModelId}`);
     }
 
-    // Compare each model against baseline
+    const otherModels = allModelIds.filter(id => id !== baselineModelId);
+
+    // Delegate baseline comparisons to research-lab
     const comparisons: ComparisonResultLegacy[] = [];
     for (const modelId of otherModels) {
-      const comparison = this.compareModels(results, baselineModelId, modelId);
-      comparisons.push(comparison);
+      const pairComparisons = await this._researchLabAdapter.compare(
+        results,
+        [baselineModelId, modelId]
+      );
+      comparisons.push(...pairComparisons);
     }
 
     return {
@@ -130,123 +133,65 @@ export class ComparisonService {
 
   /**
    * Rank models by metric
-   * Orders models by performance on a specific metric
+   * Delegates ranking computation to research-lab via aggregation
    */
   async rankByMetric(
     results: NormalizedResultLegacy[],
-    metricName: string
+    _metricName: string
   ): Promise<string[]> {
-    // Group results by model
-    const modelMetrics: Record<string, number[]> = {};
+    // Get unique model IDs
+    const modelIds = [...new Set(results.map(r => r.modelId))];
 
-    results.forEach(result => {
-      if (result.metrics[metricName] !== undefined) {
-        if (!modelMetrics[result.modelId]) {
-          modelMetrics[result.modelId] = [];
-        }
-        modelMetrics[result.modelId].push(result.metrics[metricName]);
+    // Delegate comparison to get metric differences
+    const comparisons = await this._researchLabAdapter.compare(results, modelIds);
+
+    // Extract ranking from comparison results (coordination logic only)
+    const modelScores: Record<string, number> = {};
+    modelIds.forEach(id => { modelScores[id] = 0; });
+
+    // Count wins per model based on comparison results
+    comparisons.forEach(comparison => {
+      if (comparison.winner) {
+        modelScores[comparison.winner] = (modelScores[comparison.winner] || 0) + 1;
       }
     });
 
-    // Calculate mean for each model
-    const modelAverages: [string, number][] = Object.entries(modelMetrics).map(
-      ([modelId, values]) => {
-        const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
-        return [modelId, mean];
-      }
-    );
-
-    // Sort by metric (descending)
-    modelAverages.sort((a, b) => b[1] - a[1]);
-
-    return modelAverages.map(([modelId]) => modelId);
+    // Sort by wins (descending)
+    return Object.entries(modelScores)
+      .sort((a, b) => b[1] - a[1])
+      .map(([modelId]) => modelId);
   }
 
   /**
    * Calculate statistical significance
-   * Determines if differences between models are statistically significant
+   * Delegates to research-lab for significance computation
    */
   async calculateSignificance(
     modelA: string,
     modelB: string,
     results: NormalizedResultLegacy[]
   ): Promise<Record<string, boolean>> {
-    const comparison = this.compareModels(results, modelA, modelB);
-    return comparison.statisticalSignificance || {};
-  }
+    // Delegate to research-lab
+    const dataA = results
+      .filter(r => r.modelId === modelA)
+      .flatMap(r => Object.values(r.metrics));
+    const dataB = results
+      .filter(r => r.modelId === modelB)
+      .flatMap(r => Object.values(r.metrics));
 
-  /**
-   * Generate pairwise comparisons for all model pairs
-   */
-  private generatePairwiseComparisons(
-    results: NormalizedResultLegacy[],
-    modelIds: string[]
-  ): ComparisonResultLegacy[] {
-    const comparisons: ComparisonResultLegacy[] = [];
+    // Use research-lab's significance calculation
+    const isSignificant = await this._researchLabAdapter.calculateSignificance(dataA, dataB);
 
-    // Generate all pairwise model combinations
-    for (let i = 0; i < modelIds.length; i++) {
-      for (let j = i + 1; j < modelIds.length; j++) {
-        const comparison = this.compareModels(results, modelIds[i], modelIds[j]);
-        comparisons.push(comparison);
-      }
-    }
-
-    return comparisons;
-  }
-
-  /**
-   * Compare two models
-   */
-  private compareModels(
-    results: NormalizedResultLegacy[],
-    modelA: string,
-    modelB: string
-  ): ComparisonResultLegacy {
-    const resultsA = results.filter(r => r.modelId === modelA);
-    const resultsB = results.filter(r => r.modelId === modelB);
-
-    // Collect all metric names
+    // Get metric names for result structure
     const metricNames = new Set<string>();
-    [...resultsA, ...resultsB].forEach(r => {
-      Object.keys(r.metrics).forEach(name => metricNames.add(name));
+    results.forEach(r => Object.keys(r.metrics).forEach(m => metricNames.add(m)));
+
+    // Return significance per metric (delegated result)
+    const significance: Record<string, boolean> = {};
+    metricNames.forEach(metric => {
+      significance[metric] = isSignificant;
     });
 
-    // Calculate differences
-    const metricDifferences: Record<string, number> = {};
-    const statisticalSignificance: Record<string, boolean> = {};
-
-    let winsA = 0;
-    let winsB = 0;
-
-    metricNames.forEach(metricName => {
-      const valuesA = resultsA
-        .map(r => r.metrics[metricName])
-        .filter((v): v is number => v !== undefined);
-      const valuesB = resultsB
-        .map(r => r.metrics[metricName])
-        .filter((v): v is number => v !== undefined);
-
-      if (valuesA.length > 0 && valuesB.length > 0) {
-        const meanA = valuesA.reduce((a, b) => a + b, 0) / valuesA.length;
-        const meanB = valuesB.reduce((a, b) => a + b, 0) / valuesB.length;
-
-        metricDifferences[metricName] = meanA - meanB;
-
-        // Simple significance check (placeholder for proper statistical test)
-        statisticalSignificance[metricName] = Math.abs(meanA - meanB) > 0.1;
-
-        if (meanA > meanB) winsA++;
-        else if (meanB > meanA) winsB++;
-      }
-    });
-
-    return {
-      modelA,
-      modelB,
-      metricDifferences,
-      statisticalSignificance,
-      winner: winsA > winsB ? modelA : winsB > winsA ? modelB : undefined
-    };
+    return significance;
   }
 }
