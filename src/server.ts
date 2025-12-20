@@ -27,8 +27,19 @@ function sendJson(res: ServerResponse, statusCode: number, data: HealthResponse 
 function handleRequest(req: IncomingMessage, res: ServerResponse): void {
   const { method, url } = req;
 
-  // Health check endpoint
-  if (url === '/' || url === '/health') {
+  // Health check endpoint (platform health contract)
+  if (url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      status: 'healthy',
+      service: 'research-core',
+      version: process.env.npm_package_version || 'unknown',
+    }));
+    return;
+  }
+
+  // Root endpoint
+  if (url === '/') {
     sendJson(res, 200, {
       status: 'healthy',
       service: 'research-core',
