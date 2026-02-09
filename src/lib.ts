@@ -21,7 +21,10 @@
  */
 
 import type { SimpleResearchRequest } from './types/index.js';
+import type { CoreExecutionResult } from './execution/types.js';
 import { CoordinationService, coordinationService } from './services/coordination.service.js';
+import { ExecutionTracer } from './execution/tracer.js';
+import { generateSpanId } from './execution/span.js';
 
 // Export types
 export * from './types/index.js';
@@ -51,6 +54,9 @@ export {
   ResearchLabAdapter,
   researchLabAdapter,
 } from './adapters/index.js';
+
+// Export execution instrumentation
+export * from './execution/index.js';
 
 /**
  * ResearchCore - Main facade for research coordination
@@ -98,6 +104,74 @@ export class ResearchCore {
    */
   async retrySimulation(runId: string) {
     return this._coordinationService.retrySimulation(runId);
+  }
+
+  /**
+   * Execute a coordinated simulation with full execution tracing.
+   *
+   * Emits a hierarchical execution graph conforming to the
+   * agentics-execution-engine contract:
+   *
+   *   Core (research-core)
+   *     └── Repo (llm-simulator)
+   *         └── Agent (returned by simulator)
+   *
+   * Returns CoreExecutionResult on success, partial failure,
+   * and total failure — the execution graph is always included.
+   *
+   * @param request - The research request to execute
+   * @param parentSpanId - Optional parent span ID from the execution engine
+   */
+  async execute(
+    request: SimpleResearchRequest,
+    parentSpanId?: string
+  ): Promise<CoreExecutionResult> {
+    const tracer = new ExecutionTracer('research-core', parentSpanId ?? null);
+
+    // Create repo span for simulator invocation
+    const repoSpan = tracer.createRepoSpan('llm-simulator');
+
+    try {
+      // Delegate to coordination service (which internally calls simulator adapter)
+      const response = await this._coordinationService.coordinateSimulation(request);
+
+      // Attach machine-verifiable evidence: the simulation run ID
+      tracer.attachEvidence(repoSpan.span_id, {
+        evidence_id: generateSpanId(),
+        type: 'id',
+        value: response.runId,
+        description: 'Simulation run identifier',
+      });
+
+      // Attach coordination response as an artifact at the repo span level
+      tracer.attachArtifact(repoSpan.span_id, {
+        artifact_id: generateSpanId(),
+        type: 'coordination-response',
+        reference: `run://${response.runId}`,
+        metadata: {
+          status: response.status,
+          message: response.message,
+        },
+      });
+
+      // Close repo span based on coordination result
+      if (response.status === 'failed') {
+        tracer.closeSpan(repoSpan.span_id, 'failed', [
+          response.message || 'Simulation failed',
+        ]);
+      } else {
+        tracer.closeSpan(repoSpan.span_id, 'completed');
+      }
+
+      return tracer.buildResult(response);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      tracer.closeSpan(repoSpan.span_id, 'failed', [message]);
+      return tracer.buildResult(
+        undefined,
+        error instanceof Error ? error : new Error(message)
+      );
+    }
   }
 }
 
