@@ -7,21 +7,32 @@ import { createServer, IncomingMessage, ServerResponse } from 'node:http';
 
 const PORT = parseInt(process.env.PORT || '8080', 10);
 
-interface HealthResponse {
-  status: string;
-  service: string;
-  version: string;
-  timestamp: string;
-}
+const LLM_SIMULATOR_URL = process.env.LLM_SIMULATOR_URL || 'http://localhost:8022';
+const LLM_RESEARCH_LAB_URL = process.env.LLM_RESEARCH_LAB_URL || 'http://localhost:8026';
+const LLM_SCHEMA_REGISTRY_URL = process.env.LLM_SCHEMA_REGISTRY_URL || 'http://localhost:8019';
 
-interface ErrorResponse {
-  error: string;
-  message: string;
-}
-
-function sendJson(res: ServerResponse, statusCode: number, data: HealthResponse | ErrorResponse): void {
+function sendJson(res: ServerResponse, statusCode: number, data: Record<string, unknown>): void {
   res.writeHead(statusCode, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(data));
+}
+
+function readBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    req.on('end', () => resolve(Buffer.concat(chunks).toString()));
+    req.on('error', reject);
+  });
+}
+
+function forwardEvent(url: string, body: string): void {
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  }).catch((err) => {
+    console.error(`Failed to forward event to ${url}:`, err);
+  });
 }
 
 function handleRequest(req: IncomingMessage, res: ServerResponse): void {
@@ -56,6 +67,27 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
       service: 'research-core',
       version: '0.1.0',
       timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  // Event forwarding endpoint
+  if (url === '/v1/events' && method === 'POST') {
+    readBody(req).then((body) => {
+      // Fire-and-forget to all downstream services
+      forwardEvent(`${LLM_SIMULATOR_URL}/v1/events`, body);
+      forwardEvent(`${LLM_RESEARCH_LAB_URL}/api/v1/events`, body);
+      forwardEvent(`${LLM_SCHEMA_REGISTRY_URL}/api/v1/events`, body);
+
+      sendJson(res, 202, {
+        accepted: true,
+        targets: ['llm-simulator', 'llm-research-lab', 'llm-schema-registry'],
+      });
+    }).catch(() => {
+      sendJson(res, 400, {
+        error: 'Bad Request',
+        message: 'Failed to read request body',
+      });
     });
     return;
   }
