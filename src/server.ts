@@ -71,6 +71,24 @@ function handleRequest(req: IncomingMessage, res: ServerResponse): void {
     return;
   }
 
+  // Research ingest endpoint (leaf in fanout chain)
+  if (url === '/v1/research/ingest' && method === 'POST') {
+    readBody(req).then((body) => {
+      const event = JSON.parse(body);
+      console.log(`[ingest] source=${event.source} execution_id=${event.execution_id}`);
+      sendJson(res, 202, {
+        status: 'accepted',
+        execution_id: event.execution_id,
+      });
+    }).catch(() => {
+      sendJson(res, 400, {
+        error: 'Bad Request',
+        message: 'Invalid JSON body',
+      });
+    });
+    return;
+  }
+
   // Event forwarding endpoint
   if (url === '/v1/events' && method === 'POST') {
     readBody(req).then((body) => {
