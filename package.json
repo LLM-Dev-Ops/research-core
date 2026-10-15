@@ -27,6 +27,7 @@
     "start": "node dist/server.js",
     "dev": "tsc --watch",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run clean && npm run build"
@@ -42,9 +43,7 @@
   ],
   "author": "",
   "license": "MIT",
-  "dependencies": {
-    "claude-flow": "^2.7.47"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^25.0.3",
     "typescript": "^5.9.3",
@@ -58,9 +57,15 @@
     "@llm-research/research-lab": "*"
   },
   "peerDependenciesMeta": {
-    "@llm-research/schema-registry": { "optional": true },
-    "@llm-research/simulator": { "optional": true },
-    "@llm-research/research-lab": { "optional": true }
+    "@llm-research/schema-registry": {
+      "optional": true
+    },
+    "@llm-research/simulator": {
+      "optional": true
+    },
+    "@llm-research/research-lab": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=18.0.0"

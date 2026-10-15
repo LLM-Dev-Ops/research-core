@@ -1,0 +1,396 @@
+{
+  "schema": 1,
+  "tool": "@metaharness/flywheel@0.1.12",
+  "baseline": "c0c5e6da5cfeb09bfe9e2bf7d01c25b0f7011935",
+  "candidate": "working-tree",
+  "holdout": "research-core-http-holdout-v1",
+  "anchor": "research-core-anchor-v1",
+  "gateFingerprint": "c5942e7c9bf8f28fe7af47a6ec3887d11eeb3f8c8e8601cc6a7a54969ea0b981",
+  "liftCurve": [
+    {
+      "generation": 0,
+      "primary": 0,
+      "delta": 0,
+      "anchor": 1
+    },
+    {
+      "generation": 1,
+      "primary": 1,
+      "delta": 1,
+      "anchor": 1
+    }
+  ],
+  "promotions": [
+    {
+      "id": "root__contract_gen1",
+      "generation": 1,
+      "parents": [
+        "root"
+      ],
+      "mutation": {
+        "target": "contract",
+        "summary": "Bound request bodies, enforce JSON object contracts, prevent invalid fanout, add executable HTTP tests and deterministic Linux CI, and remove the unused vulnerable runtime dependency.",
+        "inverse": {
+          "path": "research-core candidate",
+          "parentBytes": "c0c5e6da5cfeb09bfe9e2bf7d01c25b0f7011935",
+          "hash": "20000e07adb7bfd04903e016f5922c3140424feb61fe77d62803a7854492e7ab"
+        }
+      },
+      "primaryDelta": 1,
+      "anchorScore": 1,
+      "verdict": "PROMOTED",
+      "failureReasons": [],
+      "receipt": {
+        "payload": {
+          "kind": "candidate",
+          "id": "root__contract_gen1",
+          "target": "contract",
+          "verdict": "PROMOTED",
+          "primaryDelta": 1,
+          "baselineScore": {
+            "primary": 0,
+            "noopRate": 1,
+            "costPerWin": 9,
+            "regressed": false,
+            "itemWins": [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          "candidateScore": {
+            "primary": 1,
+            "noopRate": 0,
+            "costPerWin": 1,
+            "regressed": false,
+            "itemWins": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ]
+          },
+          "anchorScore": 1,
+          "failureReasons": [],
+          "parents": [
+            "root"
+          ],
+          "generation": 1
+        },
+        "signature": "LrFeUPtsy10SugFA6pcc4y0D/qsqktC6S45AsMb5C8WwTabi3wiC75GiE0Pga4Lidl0wg8nCJQQB6W6uIFC5Dw==",
+        "publicKey": "MCowBQYDK2VwAyEAvmlekqo0ja24/9h48i2STVwaxKbkzV/Y3zuS6xuq4cI=",
+        "alg": "ed25519"
+      },
+      "createdAt": "2026-10-15T00:30:00.000Z",
+      "baselineScore": {
+        "primary": 0,
+        "noopRate": 1,
+        "costPerWin": 9,
+        "regressed": false,
+        "itemWins": [
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false,
+          false
+        ]
+      },
+      "candidateScore": {
+        "primary": 1,
+        "noopRate": 0,
+        "costPerWin": 1,
+        "regressed": false,
+        "itemWins": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ]
+      }
+    }
+  ],
+  "replay": {
+    "pass": true,
+    "checks": {
+      "receipts": true,
+      "reachesRoot": true,
+      "contiguousParents": true,
+      "allPromoted": true,
+      "gateUnchanged": true,
+      "gateReExecutes": true,
+      "allCommitsReceipts": true,
+      "sealedFieldsAuthentic": true
+    },
+    "failures": [],
+    "chainSummary": "gen1(contract) → gen0(root)"
+  },
+  "replayBundle": {
+    "data_source": "LIVE",
+    "root_id": "root",
+    "chain": [
+      {
+        "id": "root__contract_gen1",
+        "generation": 1,
+        "parents": [
+          "root"
+        ],
+        "mutation": {
+          "target": "contract",
+          "summary": "Bound request bodies, enforce JSON object contracts, prevent invalid fanout, add executable HTTP tests and deterministic Linux CI, and remove the unused vulnerable runtime dependency.",
+          "inverse": {
+            "path": "research-core candidate",
+            "parentBytes": "c0c5e6da5cfeb09bfe9e2bf7d01c25b0f7011935",
+            "hash": "20000e07adb7bfd04903e016f5922c3140424feb61fe77d62803a7854492e7ab"
+          }
+        },
+        "primaryDelta": 1,
+        "anchorScore": 1,
+        "verdict": "PROMOTED",
+        "failureReasons": [],
+        "receipt": {
+          "payload": {
+            "kind": "candidate",
+            "id": "root__contract_gen1",
+            "target": "contract",
+            "verdict": "PROMOTED",
+            "primaryDelta": 1,
+            "baselineScore": {
+              "primary": 0,
+              "noopRate": 1,
+              "costPerWin": 9,
+              "regressed": false,
+              "itemWins": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+              ]
+            },
+            "candidateScore": {
+              "primary": 1,
+              "noopRate": 0,
+              "costPerWin": 1,
+              "regressed": false,
+              "itemWins": [
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                true
+              ]
+            },
+            "anchorScore": 1,
+            "failureReasons": [],
+            "parents": [
+              "root"
+            ],
+            "generation": 1
+          },
+          "signature": "LrFeUPtsy10SugFA6pcc4y0D/qsqktC6S45AsMb5C8WwTabi3wiC75GiE0Pga4Lidl0wg8nCJQQB6W6uIFC5Dw==",
+          "publicKey": "MCowBQYDK2VwAyEAvmlekqo0ja24/9h48i2STVwaxKbkzV/Y3zuS6xuq4cI=",
+          "alg": "ed25519"
+        },
+        "createdAt": "2026-10-15T00:30:00.000Z",
+        "baselineScore": {
+          "primary": 0,
+          "noopRate": 1,
+          "costPerWin": 9,
+          "regressed": false,
+          "itemWins": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        "candidateScore": {
+          "primary": 1,
+          "noopRate": 0,
+          "costPerWin": 1,
+          "regressed": false,
+          "itemWins": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ]
+        }
+      },
+      {
+        "id": "root",
+        "generation": 0,
+        "parents": [],
+        "mutation": null,
+        "primaryDelta": 0,
+        "anchorScore": 1,
+        "verdict": "ROOT",
+        "failureReasons": [],
+        "receipt": {
+          "payload": {
+            "kind": "root",
+            "root": "root"
+          },
+          "signature": "wLNDTJJKdifDwBihypEgKalCs3puT5HUQblGZt0DDfK/LlUtH+VOUfkzKoGeV7SzyViawoLGhy6sV6kkxv2gBA==",
+          "publicKey": "MCowBQYDK2VwAyEAvmlekqo0ja24/9h48i2STVwaxKbkzV/Y3zuS6xuq4cI=",
+          "alg": "ed25519"
+        },
+        "createdAt": "2026-10-15T00:30:00.000Z"
+      }
+    ],
+    "all_commits": [
+      {
+        "id": "root__contract_gen1",
+        "generation": 1,
+        "parents": [
+          "root"
+        ],
+        "mutation": {
+          "target": "contract",
+          "summary": "Bound request bodies, enforce JSON object contracts, prevent invalid fanout, add executable HTTP tests and deterministic Linux CI, and remove the unused vulnerable runtime dependency.",
+          "inverse": {
+            "path": "research-core candidate",
+            "parentBytes": "c0c5e6da5cfeb09bfe9e2bf7d01c25b0f7011935",
+            "hash": "20000e07adb7bfd04903e016f5922c3140424feb61fe77d62803a7854492e7ab"
+          }
+        },
+        "primaryDelta": 1,
+        "anchorScore": 1,
+        "verdict": "PROMOTED",
+        "failureReasons": [],
+        "receipt": {
+          "payload": {
+            "kind": "candidate",
+            "id": "root__contract_gen1",
+            "target": "contract",
+            "verdict": "PROMOTED",
+            "primaryDelta": 1,
+            "baselineScore": {
+              "primary": 0,
+              "noopRate": 1,
+              "costPerWin": 9,
+              "regressed": false,
+              "itemWins": [
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false,
+                false
+              ]
+            },
+            "candidateScore": {
+              "primary": 1,
+              "noopRate": 0,
+              "costPerWin": 1,
+              "regressed": false,
+              "itemWins": [
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                true
+              ]
+            },
+            "anchorScore": 1,
+            "failureReasons": [],
+            "parents": [
+              "root"
+            ],
+            "generation": 1
+          },
+          "signature": "LrFeUPtsy10SugFA6pcc4y0D/qsqktC6S45AsMb5C8WwTabi3wiC75GiE0Pga4Lidl0wg8nCJQQB6W6uIFC5Dw==",
+          "publicKey": "MCowBQYDK2VwAyEAvmlekqo0ja24/9h48i2STVwaxKbkzV/Y3zuS6xuq4cI=",
+          "alg": "ed25519"
+        },
+        "createdAt": "2026-10-15T00:30:00.000Z",
+        "baselineScore": {
+          "primary": 0,
+          "noopRate": 1,
+          "costPerWin": 9,
+          "regressed": false,
+          "itemWins": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ]
+        },
+        "candidateScore": {
+          "primary": 1,
+          "noopRate": 0,
+          "costPerWin": 1,
+          "regressed": false,
+          "itemWins": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ]
+        }
+      }
+    ],
+    "lift_curve": [
+      {
+        "generation": 0,
+        "primary": 0,
+        "delta": 0,
+        "anchor": 1
+      },
+      {
+        "generation": 1,
+        "primary": 1,
+        "delta": 1,
+        "anchor": 1
+      }
+    ],
+    "gate_fingerprint": "c5942e7c9bf8f28fe7af47a6ec3887d11eeb3f8c8e8601cc6a7a54969ea0b981",
+    "verified_improvements": 1,
+    "anchor_surviving_improvements": 1,
+    "milestone_reached": false,
+    "created_at": "2026-10-15T00:30:00.000Z"
+  }
+}
